@@ -18,8 +18,9 @@ Guía para Claude Code en este repo. El contexto del proyecto está en `~/tiendi
 1. Nunca commitear directo a `main`.
 2. Rama `feat/<descripcion>` o `fix/<descripcion>`.
 3. Commits pequeños, en español, formato conventional.
-4. `./mvnw clean test` antes de abrir PR.
-5. PR a `main` → revisión de David → merge.
+4. **Sin atribución de Claude en los commits** (sin `Co-Authored-By`).
+5. `./mvnw clean test` antes de abrir PR.
+6. PR a `main` → revisión de David → merge.
 
 ## Reglas del proyecto
 
