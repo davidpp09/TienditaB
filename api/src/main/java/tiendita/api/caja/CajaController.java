@@ -22,8 +22,16 @@ public class CajaController {
     public record Movimiento(@NotNull BigDecimal monto, String concepto, String categoria) {}
     public record Cierre(@NotNull BigDecimal contado, String notas) {}
 
-    public record EstadoCaja(Long corteId, LocalDate fecha, LocalDateTime abiertoEn,
+    public record EstadoCaja(boolean abierta, Long corteId, LocalDate fecha, LocalDateTime abiertoEn,
                              BigDecimal fondoInicial, BigDecimal esperado) {}
+
+    public record MovimientoVista(LocalDateTime fechaHora, TipoMovimientoCaja tipo, BigDecimal monto,
+                                  String concepto, String categoriaGasto) {
+        static MovimientoVista de(MovimientoCaja m) {
+            return new MovimientoVista(m.getFechaHora(), m.getTipo(), m.getMonto(),
+                    m.getConcepto(), m.getCategoriaGasto());
+        }
+    }
 
     public record CorteVista(Long id, LocalDate fecha, BigDecimal fondoInicial, BigDecimal totalVentas,
                              BigDecimal totalGastos, BigDecimal totalRetiros, BigDecimal esperado,
@@ -35,11 +43,25 @@ public class CajaController {
         }
     }
 
+    /**
+     * Consultar cómo está la caja NO la abre. La pantalla se refresca sola cada
+     * tantos segundos; si esto abriera un corte, tener la pantalla encendida un
+     * domingo cerrado inventaría cajas de días que nunca existieron.
+     */
     @GetMapping
     public EstadoCaja estado() {
-        CorteCaja corte = servicio.corteAbierto(usuario());
-        return new EstadoCaja(corte.getId(), corte.getFecha(), corte.getAbiertoEn(),
-                corte.getFondoInicial(), servicio.esperadoEnCaja(corte.getId()));
+        return servicio.corteAbiertoSiHay()
+                .map(c -> new EstadoCaja(true, c.getId(), c.getFecha(), c.getAbiertoEn(),
+                        c.getFondoInicial(), servicio.esperadoEnCaja(c.getId())))
+                .orElseGet(() -> new EstadoCaja(false, null, null, null, BigDecimal.ZERO, BigDecimal.ZERO));
+    }
+
+    /** Los movimientos del día en curso, para el detalle del corte. */
+    @GetMapping("/movimientos")
+    public List<MovimientoVista> movimientos() {
+        return servicio.corteAbiertoSiHay()
+                .map(c -> servicio.movimientosDelCorte(c.getId()).stream().map(MovimientoVista::de).toList())
+                .orElseGet(List::of);
     }
 
     @PostMapping("/abrir")
