@@ -13,11 +13,9 @@ import java.util.List;
 public class VentaController {
 
     private final VentaService servicio;
-    private final TicketService tickets;
 
-    public VentaController(VentaService servicio, TicketService tickets) {
+    public VentaController(VentaService servicio) {
         this.servicio = servicio;
-        this.tickets = tickets;
     }
 
     @PostMapping
@@ -27,12 +25,12 @@ public class VentaController {
 
     @GetMapping("/{id}")
     public VentaDTO.Vista porId(@PathVariable Long id) {
-        return VentaDTO.Vista.de(servicio.porId(id));
+        return servicio.vista(id);
     }
 
     @GetMapping
     public List<VentaDTO.Vista> ultimas() {
-        return servicio.ultimas().stream().map(VentaDTO.Vista::de).toList();
+        return servicio.ultimas();
     }
 
     @PostMapping("/{id}/cancelar")
@@ -43,7 +41,7 @@ public class VentaController {
     /** Texto plano listo para la impresora térmica. */
     @GetMapping(value = "/{id}/ticket", produces = MediaType.TEXT_PLAIN_VALUE + ";charset=UTF-8")
     public String ticket(@PathVariable Long id) {
-        return tickets.armar(servicio.porId(id));
+        return servicio.ticket(id);
     }
 
     /** Vendido, costo y utilidad del día. Lo que entró no es lo que se ganó. */

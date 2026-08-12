@@ -32,13 +32,16 @@ public class VentaService {
     private final ProductoRepository productos;
     private final MovimientoInventarioRepository kardex;
     private final CajaService caja;
+    private final TicketService tickets;
 
     public VentaService(VentaRepository ventas, ProductoRepository productos,
-                        MovimientoInventarioRepository kardex, CajaService caja) {
+                        MovimientoInventarioRepository kardex, CajaService caja,
+                        TicketService tickets) {
         this.ventas = ventas;
         this.productos = productos;
         this.kardex = kardex;
         this.caja = caja;
+        this.tickets = tickets;
     }
 
     /** Lo que se movió del inventario, para escribir el kardex ya con el id de la venta. */
@@ -128,8 +131,25 @@ public class VentaService {
                 .orElseThrow(() -> new EntityNotFoundException("No existe la venta " + id));
     }
 
-    public List<Venta> ultimas() {
-        return ventas.findTop50ByOrderByIdDesc();
+    /**
+     * Las lecturas que recorren los renglones tienen que ocurrir DENTRO de una
+     * transacción. Con {@code open-in-view=false} (que es lo correcto), la sesión
+     * se cierra al salir del servicio, y armar el ticket en el controlador
+     * reventaba con un 500. Lo fija TicketFueraDeTransaccionTest.
+     */
+    @Transactional(readOnly = true)
+    public VentaDTO.Vista vista(Long id) {
+        return VentaDTO.Vista.de(porId(id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<VentaDTO.Vista> ultimas() {
+        return ventas.findTop50ByOrderByIdDesc().stream().map(VentaDTO.Vista::de).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public String ticket(Long id) {
+        return tickets.armar(porId(id));
     }
 
     public ResumenVentas resumenDelDia(LocalDate dia) {
