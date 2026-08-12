@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: api
+
+    # Base de datos REAL, y de la misma versión que la Raspberry (MariaDB 10.11).
+    # Arranca vacía: Flyway la construye desde cero con las migraciones. Si una
+    # migración deja de aplicar limpiamente, se detecta aquí y no en la tienda.
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: test
+          MARIADB_DATABASE: tiendita
+          MARIADB_USER: tiendita_app
+          MARIADB_PASSWORD: test
+        ports:
+          - 3307:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # `clean` obligatorio: sin él, target/ puede conservar recursos de un build
+      # anterior y hacer pasar (o fallar) un test por un archivo que ya no existe.
+      # Ya pasó el primer día de este repo con un application.properties viejo.
+      - run: ./mvnw -B clean test
+        env:
+          TIENDITA_DB_URL: jdbc:mariadb://127.0.0.1:3307/tiendita
+          TIENDITA_DB_USER: tiendita_app
+          TIENDITA_DB_PASSWORD: test
