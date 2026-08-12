@@ -1,0 +1,12 @@
+target/
+*.jar
+*.log
+
+# Secretos: en producción viven en /etc/tiendita/backend.env, nunca en el repo.
+*.env
+.env.local
+
+.idea/
+.vscode/
+*.iml
+.DS_Store
