@@ -6,6 +6,7 @@ import tiendita.api.infra.ReglaDeNegocioException;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CajaService {
@@ -32,16 +33,43 @@ public class CajaService {
                 .orElseGet(() -> abrirInterno(BigDecimal.ZERO, usuario));
     }
 
-    /** Declarar el fondo de caja de la mañana. */
+    /**
+     * El corte abierto si lo hay, SIN abrir uno nuevo. Es lo que consulta la
+     * pantalla: preguntar cómo está la caja no puede tener el efecto de abrirla.
+     */
+    public Optional<CorteCaja> corteAbiertoSiHay() {
+        return cortes.findFirstByCerradoEnIsNullOrderByAbiertoEnDesc();
+    }
+
+    /**
+     * Declarar el fondo de caja de la mañana.
+     * <p>
+     * Si la caja ya se abrió sola —porque entró una venta antes de que nadie
+     * declarara nada, que es lo que pasa casi todos los días— esto le pone el
+     * fondo en lugar de negarse. Negarse obligaría a cerrar y reabrir la caja
+     * para arreglar un trámite, y el dinero del día ya estaría adentro.
+     */
     @Transactional
     public CorteCaja abrir(BigDecimal fondoInicial, String usuario) {
         if (fondoInicial == null || fondoInicial.signum() < 0) {
             throw new ReglaDeNegocioException("El fondo no puede ser negativo");
         }
-        if (cortes.findFirstByCerradoEnIsNullOrderByAbiertoEnDesc().isPresent()) {
-            throw new ReglaDeNegocioException("La caja ya está abierta. Ciérrala antes de abrir otra.");
+        Optional<CorteCaja> abierto = corteAbiertoSiHay();
+        if (abierto.isEmpty()) {
+            return abrirInterno(fondoInicial, usuario);
         }
-        return abrirInterno(fondoInicial, usuario);
+
+        CorteCaja corte = abierto.get();
+        if (corte.getFondoInicial().signum() != 0) {
+            throw new ReglaDeNegocioException("La caja ya tiene un fondo declarado de $"
+                    + corte.getFondoInicial() + ". Haz el corte antes de abrir otra.");
+        }
+        corte.declararFondo(fondoInicial);
+        if (fondoInicial.signum() != 0) {
+            movimientos.save(new MovimientoCaja(TipoMovimientoCaja.FONDO, fondoInicial,
+                    "Fondo de caja", corte, usuario));
+        }
+        return corte;
     }
 
     private CorteCaja abrirInterno(BigDecimal fondoInicial, String usuario) {

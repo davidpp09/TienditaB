@@ -64,6 +64,14 @@ public class CorteCaja {
         return cerradoEn == null;
     }
 
+    /**
+     * Pone el fondo en una caja que se abrió sola. Pasa todos los días: la
+     * primera venta entra antes de que nadie declare con cuánto empezó el cajón.
+     */
+    public void declararFondo(BigDecimal fondoInicial) {
+        this.fondoInicial = fondoInicial;
+    }
+
     public void cerrar(BigDecimal totalVentas, BigDecimal totalGastos, BigDecimal totalRetiros,
                        BigDecimal esperado, BigDecimal contado, String notas) {
         this.totalVentas = totalVentas;
