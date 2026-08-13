@@ -2,11 +2,13 @@ package tiendita.api.venta;
 
 import tiendita.api.comun.FormaPago;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import tiendita.api.caja.CajaService;
+import tiendita.api.caja.CorteCaja;
 import tiendita.api.producto.Producto;
 import tiendita.api.producto.ProductoRepository;
 import tiendita.api.producto.Unidad;
@@ -33,15 +35,33 @@ class TicketFueraDeTransaccionTest {
     @Autowired ProductoRepository productos;
     @Autowired CajaService caja;
 
+    /** El corte que ya estaba abierto antes de que este test tocara nada. */
+    private Long corteAjeno;
+
+    @BeforeEach
+    void recordarLaCajaQueYaEstabaAbierta() {
+        corteAjeno = caja.corteAbiertoSiHay().map(CorteCaja::getId).orElse(null);
+    }
+
     /**
      * Al no haber transacción, lo que este test escribe SE QUEDA. Cobrar deja una
      * caja abierta, y una caja abierta que sobrevive al test hace fallar a los
      * demás (`abrir` se niega, y el esperado arrastra ventas ajenas). Cerrarla
      * aquí es la contrapartida de haber renunciado al rollback.
+     *
+     * <p>Pero solo la que abrió ESTE test. La versión anterior cerraba «el corte
+     * abierto que hubiera», y apuntando a la base de desarrollo eso significaba
+     * cerrar el corte de la tienda: el 2026-08-13 cerró el del día anterior, con
+     * su fondo de $500, y le cuadró la diferencia en cero. Los tests ya corren
+     * contra `tiendita_test` y no deberían poder llegar ahí; esto es el segundo
+     * cerrojo, por si alguien exporta un TIENDITA_DB_URL a la base equivocada.
      */
     @AfterEach
-    void cerrarLaCajaQueDejeAbierta() {
-        caja.cerrar(caja.esperadoEnCaja(caja.corteAbierto("test").getId()), "cierre del test", "test");
+    void cerrarSoloLaCajaQueAbriYo() {
+        caja.corteAbiertoSiHay()
+                .filter(corte -> !corte.getId().equals(corteAjeno))
+                .ifPresent(corte -> caja.cerrar(caja.esperadoEnCaja(corte.getId()),
+                        "cierre del test", "test"));
     }
 
     @Test
