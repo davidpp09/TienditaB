@@ -1,12 +1,12 @@
 package tiendita.api.producto;
 
+import tiendita.api.comun.FormaPago;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import tiendita.api.kardex.MovimientoInventarioRepository;
-import tiendita.api.venta.FormaPago;
 import tiendita.api.venta.Venta;
 import tiendita.api.venta.VentaDTO;
 import tiendita.api.venta.VentaService;

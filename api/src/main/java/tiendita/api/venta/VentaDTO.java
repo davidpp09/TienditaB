@@ -1,5 +1,6 @@
 package tiendita.api.venta;
 
+import tiendita.api.comun.FormaPago;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;

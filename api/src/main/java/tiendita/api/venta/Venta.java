@@ -1,5 +1,6 @@
 package tiendita.api.venta;
 
+import tiendita.api.comun.FormaPago;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
