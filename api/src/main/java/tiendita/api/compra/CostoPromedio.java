@@ -59,4 +59,42 @@ final class CostoPromedio {
 
         return valorAnterior.add(valorQueEntra).divide(piezas, DECIMALES, RoundingMode.HALF_UP);
     }
+
+    /**
+     * Lo contrario: sacar del promedio unas piezas que entraron a un costo
+     * conocido, porque se le regresaron al proveedor.
+     *
+     * <pre>
+     *   costo_nuevo = (existencia × costo_actual − cantidad × costo_devuelto)
+     *                 ─────────────────────────────────────────────────────────
+     *                            existencia − cantidad
+     * </pre>
+     *
+     * No es lo mismo que sacarlas al costo promedio, que es lo que hace una
+     * merma. Si se compró caro y se devuelve completo ese lote, el promedio
+     * tiene que volver exactamente a donde estaba antes de la compra; sacando
+     * al promedio se quedaría contaminado para siempre con un costo que ya se
+     * deshizo. Lo comprueba
+     * {@code devolverElLoteCompletoDejaElPromedioComoEstabaAntes}.
+     *
+     * @param cantidad      lo que se devuelve, siempre positivo
+     * @param costoDevuelto lo que se había pagado por esas piezas
+     */
+    static BigDecimal revertir(BigDecimal existenciaActual, BigDecimal costoActual,
+                               BigDecimal cantidad, BigDecimal costoDevuelto) {
+
+        BigDecimal piezasQueQuedan = existenciaActual.subtract(cantidad);
+        BigDecimal valorQueQueda = existenciaActual.multiply(costoActual)
+                .subtract(cantidad.multiply(costoDevuelto));
+
+        // Si no queda nada, no hay nada que promediar: el costo se deja como
+        // estaba y la siguiente compra lo fija. Y si el valor restante saliera
+        // negativo —solo pasa con datos ya torcidos— dejarlo quieto es mejor
+        // que guardar un costo negativo, que después contaminaría cada venta.
+        if (piezasQueQuedan.signum() <= 0 || valorQueQueda.signum() < 0) {
+            return costoActual;
+        }
+
+        return valorQueQueda.divide(piezasQueQuedan, DECIMALES, RoundingMode.HALF_UP);
+    }
 }
