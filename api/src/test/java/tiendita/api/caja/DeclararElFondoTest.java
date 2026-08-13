@@ -1,5 +1,6 @@
 package tiendita.api.caja;
 
+import tiendita.api.comun.FormaPago;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,7 +10,6 @@ import tiendita.api.infra.ReglaDeNegocioException;
 import tiendita.api.producto.Producto;
 import tiendita.api.producto.ProductoRepository;
 import tiendita.api.producto.Unidad;
-import tiendita.api.venta.FormaPago;
 import tiendita.api.venta.VentaDTO;
 import tiendita.api.venta.VentaService;
 

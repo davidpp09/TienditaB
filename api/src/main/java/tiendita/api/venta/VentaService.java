@@ -1,5 +1,6 @@
 package tiendita.api.venta;
 
+import tiendita.api.comun.FormaPago;
 import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

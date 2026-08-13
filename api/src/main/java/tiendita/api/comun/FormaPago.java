@@ -1,4 +1,4 @@
-package tiendita.api.venta;
+package tiendita.api.comun;
 
 public enum FormaPago {
     EFECTIVO,

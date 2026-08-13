@@ -1,5 +1,6 @@
 package tiendita.api.venta;
 
+import tiendita.api.comun.FormaPago;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

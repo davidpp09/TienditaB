@@ -1,5 +1,6 @@
 package tiendita.api.venta;
 
+import tiendita.api.comun.FormaPago;
 import tiendita.api.producto.Producto;
 import tiendita.api.producto.Unidad;
 
