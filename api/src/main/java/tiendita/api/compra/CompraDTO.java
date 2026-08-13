@@ -2,6 +2,7 @@ package tiendita.api.compra;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import tiendita.api.comun.FormaPago;
@@ -76,6 +77,46 @@ public class CompraDTO {
                     avisos);
         }
     }
+
+    /**
+     * Lo que se le regresa al proveedor: llegó caduco, roto, o de más.
+     *
+     * <p>Aquí no viaja el costo, al revés que en la compra. El costo sale del
+     * renglón de la compra original, que es lo que de verdad se pagó por esas
+     * piezas. Si viajara desde el cliente, se podría "devolver" a un costo
+     * inventado y quedarse con la diferencia.
+     */
+    public record Devolucion(
+            @NotBlank(message = "el motivo es obligatorio") String motivo,
+            @NotEmpty(message = "no hay nada que devolver") @Valid List<LineaDevuelta> lineas
+    ) {}
+
+    public record LineaDevuelta(
+            @NotNull(message = "falta el producto") Long productoId,
+            @NotNull(message = "falta la cantidad") BigDecimal cantidad
+    ) {}
+
+    public record LineaDevueltaVista(
+            Long productoId,
+            String producto,
+            BigDecimal cantidad,
+            BigDecimal costoUnitario,
+            BigDecimal importe,
+            BigDecimal existenciaResultante,
+            BigDecimal costoPromedioResultante
+    ) {}
+
+    public record DevolucionVista(
+            Long compraId,
+            String proveedor,
+            String folio,
+            String motivo,
+            /** El dinero que el proveedor tiene que regresar. */
+            BigDecimal total,
+            /** Verdadero solo si esa compra había salido del cajón en efectivo. */
+            boolean regresoAlCajon,
+            List<LineaDevueltaVista> lineas
+    ) {}
 
     /** Un renglón del historial: qué se pagó por este producto, cuándo y a quién. */
     public record PrecioPagado(

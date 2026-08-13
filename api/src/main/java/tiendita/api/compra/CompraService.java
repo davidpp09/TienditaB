@@ -115,6 +115,77 @@ public class CompraService {
         return CompraDTO.Vista.de(compra, avisos);
     }
 
+    /**
+     * Regresarle mercancía al proveedor: llegó caduca, rota, o de más.
+     *
+     * <p>Se hace siempre <b>contra una compra</b>, no suelta. Es lo que permite
+     * saber a qué costo salen esas piezas —el que se pagó por ellas, no el
+     * promedio de hoy— y cuánto dinero tiene que regresar el proveedor.
+     *
+     * <p>No crea una tabla de devoluciones: el kardex ya es el libro, y ahí
+     * queda el movimiento con su referencia a la compra y su motivo. Una tabla
+     * aparte sería una segunda versión de la misma verdad.
+     */
+    @Transactional
+    public CompraDTO.DevolucionVista devolver(Long compraId, CompraDTO.Devolucion datos, String usuario) {
+        Compra compra = porId(compraId);
+        if (datos.motivo() == null || datos.motivo().isBlank()) {
+            throw new ReglaDeNegocioException("Hay que decir por qué se devuelve");
+        }
+
+        List<CompraDTO.LineaDevueltaVista> devueltas = new ArrayList<>();
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (CompraDTO.LineaDevuelta linea : datos.lineas()) {
+            CompraDetalle renglon = compra.getDetalles().stream()
+                    .filter(d -> d.getProducto().getId().equals(linea.productoId()))
+                    .findFirst()
+                    .orElseThrow(() -> new ReglaDeNegocioException(
+                            "Esa compra no trae el producto " + linea.productoId()));
+
+            Producto p = productos.findByIdConBloqueo(linea.productoId()).orElseThrow();
+            BigDecimal cantidad = normalizarCantidad(p, linea.cantidad());
+            BigDecimal costo = renglon.getCostoUnitario();
+
+            BigDecimal yaDevuelto = kardex.yaDevueltoDeLaCompra(p.getId(), compraId);
+            BigDecimal disponible = renglon.getCantidad().subtract(yaDevuelto);
+            if (cantidad.compareTo(disponible) > 0) {
+                throw new ReglaDeNegocioException(
+                        "De " + p.getNombre() + " solo quedan " + disponible.stripTrailingZeros().toPlainString()
+                                + " por devolver de esa compra (se compraron "
+                                + renglon.getCantidad().stripTrailingZeros().toPlainString()
+                                + " y ya se devolvieron " + yaDevuelto.stripTrailingZeros().toPlainString() + ")");
+            }
+
+            // Sale al costo que se pagó, y el promedio se deshace en la misma
+            // proporción en que se hizo. Sacar al costo promedio —como hace una
+            // merma— dejaría el promedio contaminado con un costo que se
+            // deshizo, y el valor del inventario mentiría de ahí en adelante.
+            p.setCostoPromedio(CostoPromedio.revertir(p.getExistencia(), p.getCostoPromedio(), cantidad, costo));
+            p.moverExistencia(cantidad.negate());
+
+            kardex.save(new MovimientoInventario(p, TipoMovimiento.DEVOLUCION_PROVEEDOR, cantidad.negate(),
+                    costo, p.getExistencia(), "COMPRA", compraId, datos.motivo(), usuario));
+
+            BigDecimal importe = costo.multiply(cantidad).setScale(2, RoundingMode.HALF_UP);
+            total = total.add(importe);
+            devueltas.add(new CompraDTO.LineaDevueltaVista(p.getId(), p.getNombre(), cantidad, costo,
+                    importe, p.getExistencia(), p.getCostoPromedio()));
+        }
+
+        // El dinero regresa al cajón solo si de ahí había salido. Si la compra
+        // se pagó por transferencia o se quedó a deber, lo que cambia es lo que
+        // se le debe al proveedor, y el cajón no se entera.
+        if (compra.salioDelCajon()) {
+            caja.registrar(TipoMovimientoCaja.COMPRA, total,
+                            "Devolución a " + compra.getProveedor().getNombre() + etiquetaDeFolio(compra), usuario)
+                    .conReferencia("COMPRA", compraId);
+        }
+
+        return new CompraDTO.DevolucionVista(compraId, compra.getProveedor().getNombre(), compra.getFolio(),
+                datos.motivo(), total, compra.salioDelCajon(), devueltas);
+    }
+
     @Transactional(readOnly = true)
     public CompraDTO.Vista vista(Long id) {
         return CompraDTO.Vista.de(porId(id), List.of());

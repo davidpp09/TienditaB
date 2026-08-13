@@ -26,6 +26,17 @@ public class CompraController {
         return servicio.registrar(datos, usuario());
     }
 
+    /**
+     * Devolverle mercancía al proveedor. Va colgado de la compra y no suelto:
+     * el costo al que salen esas piezas es el que se pagó por ellas, y eso solo
+     * se sabe sabiendo de qué compra vinieron.
+     */
+    @PostMapping("/{id}/devolucion")
+    public CompraDTO.DevolucionVista devolver(@PathVariable Long id,
+                                              @RequestBody @Valid CompraDTO.Devolucion datos) {
+        return servicio.devolver(id, datos, usuario());
+    }
+
     @GetMapping
     public List<CompraDTO.Vista> ultimas(@RequestParam(required = false) Long proveedorId) {
         return proveedorId == null ? servicio.ultimas() : servicio.deProveedor(proveedorId);
